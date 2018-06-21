@@ -1,22 +1,162 @@
 # See doc/docker/README.md or https://github.com/instructure/canvas-lms/tree/master/doc/docker
 version: '2'
 services:
-  web: &WEB
+  nginx-proxy:
+    image: jwilder/nginx-proxy:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /etc/nginx/vhost.d
+      - /usr/share/nginx/html
+      - /etc/nginx/certs
+      - /var/run/docker.sock:/tmp/docker.sock:ro
+  web:
     build:
-#This pulls the Dockerfile from the current directory    
+    #This pulls the Dockerfile from the current directory    
       context: .
+      dockerfile: Dockerfile-hls
+    volumes:
+      - .:/usr/src/app
+      - api_docs:/usr/src/app/public/doc/api
+      - brandable_css_brands:/usr/src/app/app/stylesheets/brandable_css_brands
+      - bundler:/home/docker/.bundler/
+      - canvas-docker-gems:/home/docker/.gem/
+      - canvas-planner_node_modules:/usr/src/app/packages/canvas-planner/node_modules
+      - canvas-planner_lib:/usr/src/app/packages/canvas-planner/lib
+      - generated_1:/usr/src/app/public/javascripts/client_apps
+      - generated_2:/usr/src/app/public/dist
+      - generated_3:/usr/src/app/public/javascripts/compiled
+      - i18nliner_node_modules:/usr/src/app/gems/canvas_i18nliner/node_modules
+      - locales:/usr/src/app/config/locales/generated
+      - log:/usr/src/app/log
+      - node_modules:/usr/src/app/node_modules
+      - quizzes_dist:/usr/src/app/client_apps/canvas_quizzes/dist
+      - quizzes_node_modules:/usr/src/app/client_apps/canvas_quizzes/node_modules
+      - quizzes_tmp:/usr/src/app/client_apps/canvas_quizzes/tmp
+      - selinimum_node_modules:/usr/src/app/gems/selinimum/node_modules
+      - styleguide:/usr/src/app/app/views/info
+      - tmp:/usr/src/app/tmp
+      - translations:/usr/src/app/public/javascripts/translations
+      - yardoc:/usr/src/app/.yardoc
+      - yarn-cache:/home/docker/.cache/yarn
+    environment:
+      RAILS_ENV: production
+      ENCRYPTION_KEY: $THK@h1Pwl%N26JqiIANau%JQNYPxVDk  
+      VIRTUAL_HOST: canvas.thelatinschool.org
+      LESTENCRYPT_HOST: canvas.thelatinschool.org
+      LETSENCRYPT_EMAIL: it@thelatinschool.org
     links:
       - postgres
       - redis
+      - attendance
+      - mathman
+      - mailrelay
 
   jobs:
-    <<: *WEB
-    command: bundle exec script/delayed_job run
+      build:
+      #This pulls the Dockerfile from the current directory    
+       context: .
+       dockerfile: Dockerfile-hls
+          volumes:
+      - .:/usr/src/app
+      - api_docs:/usr/src/app/public/doc/api
+      - brandable_css_brands:/usr/src/app/app/stylesheets/brandable_css_brands
+      - bundler:/home/docker/.bundler/
+      - canvas-docker-gems:/home/docker/.gem/
+      - canvas-planner_node_modules:/usr/src/app/packages/canvas-planner/node_modules
+      - canvas-planner_lib:/usr/src/app/packages/canvas-planner/lib
+      - generated_1:/usr/src/app/public/javascripts/client_apps
+      - generated_2:/usr/src/app/public/dist
+      - generated_3:/usr/src/app/public/javascripts/compiled
+      - i18nliner_node_modules:/usr/src/app/gems/canvas_i18nliner/node_modules
+      - locales:/usr/src/app/config/locales/generated
+      - log:/usr/src/app/log
+      - node_modules:/usr/src/app/node_modules
+      - quizzes_dist:/usr/src/app/client_apps/canvas_quizzes/dist
+      - quizzes_node_modules:/usr/src/app/client_apps/canvas_quizzes/node_modules
+      - quizzes_tmp:/usr/src/app/client_apps/canvas_quizzes/tmp
+      - selinimum_node_modules:/usr/src/app/gems/selinimum/node_modules
+      - styleguide:/usr/src/app/app/views/info
+      - tmp:/usr/src/app/tmp
+      - translations:/usr/src/app/public/javascripts/translations
+      - yardoc:/usr/src/app/.yardoc
+      - yarn-cache:/home/docker/.cache/yarn
+    environment: 
+      RAILS_ENV: production
+      ENCRYPTION_KEY: $THK@h1Pwl%N26JqiIANau%JQNYPxVDk
+      command: bundle exec script/delayed_job run
 
+  webpack:
+    build:
+      #This pulls the Dockerfile from the current directory    
+       context: .
+       dockerfile: Dockerfile-hls
+          volumes:
+      - .:/usr/src/app
+      - api_docs:/usr/src/app/public/doc/api
+      - brandable_css_brands:/usr/src/app/app/stylesheets/brandable_css_brands
+      - bundler:/home/docker/.bundler/
+      - canvas-docker-gems:/home/docker/.gem/
+      - canvas-planner_node_modules:/usr/src/app/packages/canvas-planner/node_modules
+      - canvas-planner_lib:/usr/src/app/packages/canvas-planner/lib
+      - generated_1:/usr/src/app/public/javascripts/client_apps
+      - generated_2:/usr/src/app/public/dist
+      - generated_3:/usr/src/app/public/javascripts/compiled
+      - i18nliner_node_modules:/usr/src/app/gems/canvas_i18nliner/node_modules
+      - locales:/usr/src/app/config/locales/generated
+      - log:/usr/src/app/log
+      - node_modules:/usr/src/app/node_modules
+      - quizzes_dist:/usr/src/app/client_apps/canvas_quizzes/dist
+      - quizzes_node_modules:/usr/src/app/client_apps/canvas_quizzes/node_modules
+      - quizzes_tmp:/usr/src/app/client_apps/canvas_quizzes/tmp
+      - selinimum_node_modules:/usr/src/app/gems/selinimum/node_modules
+      - styleguide:/usr/src/app/app/views/info
+      - tmp:/usr/src/app/tmp
+      - translations:/usr/src/app/public/javascripts/translations
+      - yardoc:/usr/src/app/.yardoc
+      - yarn-cache:/home/docker/.cache/yarn
+    environment: &BASE-ENV
+      RAILS_ENV: production
+      ENCRYPTION_KEY: $THK@h1Pwl%N26JqiIANau%JQNYPxVDk
+    command: yarn run webpack
   postgres:
- #Different Dockerfule from subdirectory-
+ #Different Dockerfile from subdirectory-
  #I think this could be replaced by a standard image just like the production instructions use 
   #  build: ./docker-compose/postgres
     image: postgres:10-alpine
+    volumes:
+      - pg_data:/var/lib/postgresql/data
   redis:
     image: redis:alpine
+  letsencrypt-nginx-proxy-companion:
+    image: jrcs/letsencrypt-nginx-proxy-companion
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    volumes_from:
+      - nginx-proxy
+
+volumes:
+  api_docs: {}
+  brandable_css_brands: {}
+  bundler: {}
+  canvas-docker-gems: {}
+  canvas-planner_node_modules: {}
+  canvas-planner_lib: {}
+  generated_1: {}
+  generated_2: {}
+  generated_3: {}
+  i18nliner_node_modules: {}
+  locales: {}
+  log: {}
+  node_modules: {}
+  pg_data: {}
+  quizzes_dist: {}
+  quizzes_node_modules: {}
+  quizzes_tmp: {}
+  selinimum_node_modules: {}
+  styleguide: {}
+  tmp: {}
+  translations: {}
+  yardoc: {}
+  yarn-cache: {} 

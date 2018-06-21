@@ -1,0 +1,22 @@
+# See doc/docker/README.md or https://github.com/instructure/canvas-lms/tree/master/doc/docker
+version: '2'
+services:
+  web: &WEB
+    build:
+#This pulls the Dockerfile from the current directory    
+      context: .
+    links:
+      - postgres
+      - redis
+
+  jobs:
+    <<: *WEB
+    command: bundle exec script/delayed_job run
+
+  postgres:
+ #Different Dockerfule from subdirectory-
+ #I think this could be replaced by a standard image just like the production instructions use 
+  #  build: ./docker-compose/postgres
+    image: postgres:10-alpine
+  redis:
+    image: redis:alpine

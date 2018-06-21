@@ -3,6 +3,7 @@ version: '2'
 services:
   web: &WEB
     build:
+#This pulls the Dockerfile from the current directory    
       context: .
     links:
       - postgres
@@ -13,7 +14,9 @@ services:
     command: bundle exec script/delayed_job run
 
   postgres:
-    build: ./docker-compose/postgres
-
+ #Different Dockerfule from subdirectory-
+ #I think this could be replaced by a standard image just like the production instructions use 
+  #  build: ./docker-compose/postgres
+    image: postgres:10-alpine
   redis:
     image: redis:alpine

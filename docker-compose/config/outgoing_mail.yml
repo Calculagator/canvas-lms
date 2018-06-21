@@ -1,9 +1,9 @@
 production: &production
-  address: mailcatcher
-  port: 1025
-  domain: canvas.docker
-  outgoing_address: canvas@canvas.docker
-  default_name: Instructure Canvas
+  address: mailrelay
+  port: 25
+  domain: canvas.thelatinschool.org
+  outgoing_address: canvas@thelatinschool.org
+  default_name: HLS Grades
 
 development:
   <<: *production

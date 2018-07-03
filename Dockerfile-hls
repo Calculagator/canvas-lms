@@ -64,7 +64,7 @@ RUN bash -c ' \
   set -e; \
   \
   sudo -u docker -E env HOME=/home/docker PATH=$PATH bundle install --jobs 2; \
-  sudo -u docker -E env HOME=/home/docker PATH=$PATHyarn install --pure-lockfile; \
+  sudo -u docker -E env HOME=/home/docker PATH=$PATH yarn install --pure-lockfile; \
   COMPILE_ASSETS_NPM_INSTALL=0 bundle exec rake canvas:compile_assets; \
   \
   # downgrade to prod dependencies \

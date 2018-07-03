@@ -39,7 +39,16 @@ RUN if [ -e /var/lib/gems/$RUBY_MAJOR.0/gems/bundler-* ]; then BUNDLER_INSTALL="
 
 WORKDIR $APP_HOME
 
-COPY . $APP_HOME
+#COPY . $APP_HOME
+COPY Gemfile      ${APP_HOME}
+COPY Gemfile.d    ${APP_HOME}Gemfile.d
+COPY config       ${APP_HOME}config
+COPY gems         ${APP_HOME}gems
+COPY packages     ${APP_HOME}packages
+COPY script       ${APP_HOME}script
+COPY package.json ${APP_HOME}
+COPY yarn.lock    ${APP_HOME}
+RUN find gems packages -type d ! -user docker -print0 | xargs -0 chown -h docker:docker
 
 # optimizing for size here ... get all the dev dependencies so we can
 # compile assets, then throw away everything we don't need
@@ -54,7 +63,7 @@ RUN bash -c ' \
   # bash cuz better globbing and comments \
   set -e; \
   \
-  sudo -u docker -E env HOME=/home/docker PATH=$PATH bundle install --jobs 8; \
+  sudo -u docker -E env HOME=/home/docker PATH=$PATH bundle install --jobs 2; \
   yarn install --pure-lockfile; \
   COMPILE_ASSETS_NPM_INSTALL=0 bundle exec rake canvas:compile_assets; \
   \

@@ -49,16 +49,16 @@ services:
     links:
       - postgres
       - redis
-      - attendance
-      - mathman
-      - mailrelay
+#      - attendance
+#      - mathman
+#      - mailrelay
 
   jobs:
-      build:
+    build:
       #This pulls the Dockerfile from the current directory    
        context: .
        dockerfile: Dockerfile-hls
-          volumes:
+    volumes:
       - .:/usr/src/app
       - api_docs:/usr/src/app/public/doc/api
       - brandable_css_brands:/usr/src/app/app/stylesheets/brandable_css_brands
@@ -86,13 +86,15 @@ services:
       RAILS_ENV: production
       ENCRYPTION_KEY: $THK@h1Pwl%N26JqiIANau%JQNYPxVDk
       command: bundle exec script/delayed_job run
-
+    links:
+      - postgres
+      - redis
   webpack:
     build:
       #This pulls the Dockerfile from the current directory    
        context: .
        dockerfile: Dockerfile-hls
-          volumes:
+    volumes:
       - .:/usr/src/app
       - api_docs:/usr/src/app/public/doc/api
       - brandable_css_brands:/usr/src/app/app/stylesheets/brandable_css_brands

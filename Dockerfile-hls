@@ -52,71 +52,38 @@ RUN find gems packages -type d ! -user docker -print0 | xargs -0 chown -h docker
 
 # This fails: I'll attempt to replace with the working config from the default Dockerfile
 
-#RUN bash -c ' \
+RUN bash -c ' \
   # bash cuz better globbing and comments \
-#  set -e; \
-#  \
-#  sudo -u docker -E env HOME=/home/docker PATH=$PATH bundle install --jobs 2; \
-#  sudo -u docker -E env HOME=/home/docker PATH=$PATH yarn install --pure-lockfile; \
-#  COMPILE_ASSETS_NPM_INSTALL=0 bundle exec rake canvas:compile_assets; \
-#  \
-#  # downgrade to prod dependencies \
-#  sudo -u docker -E env HOME=/home/docker PATH=$PATH bundle install --without test development; \
-#  sudo -u docker -E env HOME=/home/docker PATH=$PATH bundle clean --force; \
-#  yarn install --prod; \
-#  \
-#  # now some cleanup... \
-#  rm -rf \
-#    /home/docker/.bundle/cache \
-#    $GEM_HOME/cache \
-#    $GEM_HOME/bundler/gems/*/{.git,spec,test,features} \
-#    $GEM_HOME/gems/*/{spec,test,features} \
-#    `yarn cache dir` \
-#    /root/.node-gyp \
-#    /tmp/phantomjs \
-#    .yardoc \
-#    client_apps/canvas_quizzes/{tmp,node_modules} \
-#    config/locales/generated \
-#    gems/*/node_modules \
-#    gems/plugins/*/node_modules \
-#    log \
-#    public/dist/maps \
-#    public/doc/api/*.json \
-#    public/javascripts/translations \
-#    tmp-*.tmp'
+  set -e; \
+  \
+  sudo -u docker -E env HOME=/home/docker PATH=$PATH bundle install --jobs 2; \
+  sudo -u docker -E env HOME=/home/docker PATH=$PATH yarn install --pure-lockfile; \
+  COMPILE_ASSETS_NPM_INSTALL=0 bundle exec rake canvas:compile_assets; \
+  \
+  # downgrade to prod dependencies \
+  sudo -u docker -E env HOME=/home/docker PATH=$PATH bundle install --without test development; \
+  sudo -u docker -E env HOME=/home/docker PATH=$PATH bundle clean --force; \
+  yarn install --prod; \
+  \
+  # now some cleanup... \
+  rm -rf \
+    /home/docker/.bundle/cache \
+    $GEM_HOME/cache \
+    $GEM_HOME/bundler/gems/*/{.git,spec,test,features} \
+    $GEM_HOME/gems/*/{spec,test,features} \
+    `yarn cache dir` \
+    /root/.node-gyp \
+    /tmp/phantomjs \
+    .yardoc \
+    client_apps/canvas_quizzes/{tmp,node_modules} \
+    config/locales/generated \
+    gems/*/node_modules \
+    gems/plugins/*/node_modules \
+    log \
+    public/dist/maps \
+    public/doc/api/*.json \
+    public/javascripts/translations \
+    tmp-*.tmp'
 
-# Install deps as docker to avoid sadness w/ npm lifecycle hooks
-USER docker
-RUN bundle install --jobs 2 \
-  && yarn install --pure-lockfile
-USER root
-
-COPY . $APP_HOME
-RUN mkdir -p .yardoc \
-             app/stylesheets/brandable_css_brands \
-             app/views/info \
-             client_apps/canvas_quizzes/dist \
-             client_apps/canvas_quizzes/node_modules \
-             client_apps/canvas_quizzes/tmp \
-             config/locales/generated \
-             gems/canvas_i18nliner/node_modules \
-             gems/selinimum/node_modules \
-             log \
-             node_modules \
-             packages/canvas-planner/lib \
-             packages/canvas-planner/node_modules \
-             public/dist \
-             public/doc/api \
-             public/javascripts/client_apps \
-             public/javascripts/compiled \
-             public/javascripts/translations \
-             tmp \
-             /home/docker/.bundler/ \
-             /home/docker/.cache/yarn \
-             /home/docker/.gem/ \
-  && find ${APP_HOME} /home/docker ! -user docker -print0 | xargs -0 chown -h docker:docker
 
 USER docker
-# TODO: switch to canvas:compile_assets_dev once we stop using this Dockerfile in production/e2e
-RUN COMPILE_ASSETS_NPM_INSTALL=0 bundle exec rake canvas:compile_assets
-

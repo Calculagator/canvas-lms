@@ -29,7 +29,7 @@ services:
       - generated_3:/usr/src/app/public/javascripts/compiled
       - i18nliner_node_modules:/usr/src/app/gems/canvas_i18nliner/node_modules
       - locales:/usr/src/app/config/locales/generated
-      - log:/usr/src/app/log
+      - /usr/src/app/log
       - node_modules:/usr/src/app/node_modules
       - quizzes_dist:/usr/src/app/client_apps/canvas_quizzes/dist
       - quizzes_node_modules:/usr/src/app/client_apps/canvas_quizzes/node_modules

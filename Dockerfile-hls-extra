@@ -1,0 +1,32 @@
+RUN bash -c ' \
+  # bash cuz better globbing and comments \
+  set -e; \
+  \
+  sudo -u docker -E env HOME=/home/docker PATH=$PATH bundle install --jobs 2; \
+  sudo -u docker -E env HOME=/home/docker PATH=$PATH yarn install --pure-lockfile; \
+  COMPILE_ASSETS_NPM_INSTALL=0 bundle exec rake canvas:compile_assets; \
+  \
+  # downgrade to prod dependencies \
+  sudo -u docker -E env HOME=/home/docker PATH=$PATH bundle install --without test development; \
+  sudo -u docker -E env HOME=/home/docker PATH=$PATH bundle clean --force; \
+  yarn install --prod; \
+  \
+  # now some cleanup... \
+  rm -rf \
+    /home/docker/.bundle/cache \
+    $GEM_HOME/cache \
+    $GEM_HOME/bundler/gems/*/{.git,spec,test,features} \
+    $GEM_HOME/gems/*/{spec,test,features} \
+    `yarn cache dir` \
+    /root/.node-gyp \
+    /tmp/phantomjs \
+    .yardoc \
+    client_apps/canvas_quizzes/{tmp,node_modules} \
+    config/locales/generated \
+    gems/*/node_modules \
+    gems/plugins/*/node_modules \
+    log \
+    public/dist/maps \
+    public/doc/api/*.json \
+    public/javascripts/translations \
+    tmp-*.tmp'

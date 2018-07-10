@@ -72,9 +72,13 @@ function install_dependencies {
 
 }
 function get_canvas {
+  if [ ! -d "canvas" ]; then
   git clone https://github.com/instructure/canvas-lms.git canvas
+  fi
   cd canvas
   git checkout stable
+  #need a functioning Gemfile.lock
+  touch Gemfile.lock
 }
 
 function start_docker_daemon {
@@ -106,13 +110,12 @@ function setup_docker_environment {
 
 function copy_canvas_config {
   message 'Creating Canvas docker configuration...'
-  rm -f config/*.yml
-
+ 
 #cache_store.yml
 echo "production:
   cache_store: redis_store
 development:
-  cache_store: redis_store" >> config/cache_store.yml
+  cache_store: redis_store" > config/cache_store.yml
 
 #database.yml
 echo "common: &common
@@ -138,10 +141,10 @@ test:
   shard2: canvas_test_rails3_shard2
   test_shard_1: canvas_test_rails3_shard1
   test_shard_2: canvas_test_rails3_shard2
-" >> config/database.yml
+" > config/database.yml
 
 #domain.yml
-Message "Don't forget to set the correct domain here in the script"
+message "Don't forget to set the correct domain here in the script"
 echo "production:
   domain: canvas.thelatinschool.org
 
@@ -149,7 +152,7 @@ test:
   domain: localhost
 
 development:
-  domain: canvas.docker" >> config/domain.yml
+  domain: canvas.docker" > config/domain.yml
   
 #dynamic_settings.yml
 echo "# this config file is useful if you don't want to run a consul
@@ -192,7 +195,7 @@ production:
     #  ios-pandata-secret: teamrocketblastoffatthespeedoflight
     #  android-pandata-key: ANDROID_pandata_key
     #  android-pandata-secret: surrendernoworpreparetofight
-" >> config/dynamic_settings.yml
+" > config/dynamic_settings.yml
 
 #outgoing mail
 echo "production: &production
@@ -203,7 +206,7 @@ echo "production: &production
   default_name: HLS Grades
 
 development:
-  <<: *production" >> config/outgoing_mail.yml
+  <<: *production" > config/outgoing_mail.yml
   
 #redis.yml
 echo "production:
@@ -221,7 +224,7 @@ test:
   # warning: the redis database will get cleared before each test, so if you
   # use this server for anything else, make sure to set aside a database id for
   # these tests to use.
-  database: 1" >> redis.yml
+  database: 1" > redis.yml
   
 #security
 echo "production: &default
@@ -231,7 +234,7 @@ development:
   <<: *default
 
 test:
-  <<: *default" >> config/security.yml
+  <<: *default" > config/security.yml
   
 }
 
@@ -256,6 +259,8 @@ RUN curl -sL https://deb.nodesource.com/setup_8.x | bash - \
   && curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | apt-key add - \
   && echo "deb https://dl.yarnpkg.com/debian/ stable main" > /etc/apt/sources.list.d/yarn.list \
   && printf '\''path-exclude /usr/share/doc/*\npath-exclude /usr/share/man/*'\'' > /etc/dpkg/dpkg.cfg.d/01_nodoc \
+  && echo "deb http://apt.postgresql.org/pub/repos/apt/ $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list \
+  && curl -sS https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add - \
   && apt-get update -qq \
   && apt-get install -qqy --no-install-recommends \
        nodejs \
@@ -268,15 +273,19 @@ RUN curl -sL https://deb.nodesource.com/setup_8.x | bash - \
   && rm -rf /var/lib/apt/lists/* \
   && mkdir -p /home/docker/.gem/ruby/$RUBY_MAJOR.0
 
-RUN if [ -e /var/lib/gems/$RUBY_MAJOR.0/gems/bundler-* ]; then BUNDLER_INSTALL="-i /var/lib/gems/$RUBY_MAJOR.0"; fi \
-  && gem uninstall --all --ignore-dependencies --force $BUNDLER_INSTALL bundler \
-  && gem install bundler --no-document -v 1.16.1 \
-  && find $GEM_HOME ! -user docker | xargs chown docker:docker
-
+#What if we keep the installed version of bundler from the upstream image?
+#RUN if [ -e /var/lib/gems/$RUBY_MAJOR.0/gems/bundler-* ]; then BUNDLER_INSTALL="-i /var/lib/gems/$RUBY_MAJOR.0"; fi \
+#  && gem uninstall --all --ignore-dependencies --force $BUNDLER_INSTALL bundler \
+#  && gem install bundler --no-document -v 1.16.1 \
+#  && find $GEM_HOME ! -user docker | xargs chown docker:docker
+RUN gem install bundler --no-document
 
 WORKDIR $APP_HOME
 
 COPY . $APP_HOME
+
+#from instructure/dockerfiles documentation
+RUN chown -R docker:docker /usr/src/app /home/docker
 
 # optimizing for size here ... get all the dev dependencies so we can
 # compile assets, then throw away everything we do not need
@@ -287,20 +296,29 @@ COPY . $APP_HOME
 # TODO: once we have docker 17.05+ everywhere, do this via multi-stage
 # build
 
+#set user as in non-production
+USER docker
 RUN bash -c '\'' \
   # bash cuz better globbing and comments \
   set -e; \
   \
-  sudo -u docker -E env HOME=/home/docker PATH=$PATH bundle install --jobs 8; \
-  yarn install --pure-lockfile; \
-  COMPILE_ASSETS_NPM_INSTALL=0 bundle exec rake canvas:compile_assets; \
+  #sudo -u docker -E env HOME=/home/docker PATH=$PATH \
+  bundle install --path vendor/bundle --jobs 8; \
+  yarn install --prod --pure-lockfile; \
+#  COMPILE_ASSETS_NPM_INSTALL=0 \
+  bundle exec rake canvas:compile_assets; \
   \
   # downgrade to prod dependencies \
-  sudo -u docker -E env HOME=/home/docker PATH=$PATH bundle install --without test development; \
-  sudo -u docker -E env HOME=/home/docker PATH=$PATH bundle clean --force; \
-  yarn install --prod; \
-  \
-  # now some cleanup... \
+  #sudo -u docker -E env HOME=/home/docker PATH=$PATH \
+  bundle install --path vendor/bundle --without test development; \
+  #sudo -u docker -E env HOME=/home/docker PATH=$PATH \
+  bundle clean --force; \
+  yarn install --prod '\''
+  
+  
+  # now some cleanup... 
+  USER root
+  RUN bash -c '\'' \
   rm -rf \
     /home/docker/.bundle/cache \
     $GEM_HOME/cache \
@@ -320,7 +338,7 @@ RUN bash -c '\'' \
     public/javascripts/translations \
     tmp-*.tmp'\''
 
-USER docker' >> Dockerfile-hls
+USER docker' > Dockerfile-hls
 
 echo '# See doc/docker/README.md or https://github.com/instructure/canvas-lms/tree/master/doc/docker
 version: '\''2'\''
@@ -355,6 +373,7 @@ services:
       - i18nliner_node_modules:/usr/src/app/gems/canvas_i18nliner/node_modules
       - locales:/usr/src/app/config/locales/generated
       - /usr/src/app/log
+      - production_gems:/vendor/bundle
       - node_modules:/usr/src/app/node_modules
       - quizzes_dist:/usr/src/app/client_apps/canvas_quizzes/dist
       - quizzes_node_modules:/usr/src/app/client_apps/canvas_quizzes/node_modules
@@ -428,6 +447,7 @@ volumes:
   log: {}
   node_modules: {}
   pg_data: {}
+  production_gems: {}
   quizzes_dist: {}
   quizzes_node_modules: {}
   quizzes_tmp: {}
@@ -436,12 +456,12 @@ volumes:
   tmp: {}
   translations: {}
   yardoc: {}
-  yarn-cache: {} ' >> docker-compose.hls.yml
+  yarn-cache: {} ' > docker-compose.hls.yml
 }
 
 function build_images {
   message 'Building docker images...'
-  docker-compose -f docker-compose.hls.yml build --pull
+  docker-compose -f docker-compose.hls.yml build
 }
 
 function install_gems {
@@ -466,7 +486,7 @@ permissions so we can install gems."
 
 #Seems redundant since this command gets run @ image creation by docker
 message "*************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************************"
-  docker-compose run --no-deps --rm web bundle install
+  docker-compose run --no-deps --rm web bundle install --path /vendor/bundle
 }
 
 function database_exists {
@@ -510,7 +530,7 @@ function setup_canvas {
   copy_canvas_config
   copy_docker_config
   build_images
-  install_gems
+#  install_gems
   prepare_database
   compile_assets
 }

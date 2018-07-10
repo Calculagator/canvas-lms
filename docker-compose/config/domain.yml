@@ -1,5 +1,5 @@
 production:
-  domain: "canvas.docker"
+  domain: "canvas.thelatinschool.org"
 
 test:
   domain: localhost
